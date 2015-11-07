@@ -4,6 +4,7 @@ using System.Collections;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace assignment2bro
 {
@@ -81,28 +82,45 @@ namespace assignment2bro
             }
 
             TwoThreeTree tree = new TwoThreeTree();
+            TwoFourTree twoFourTree = new TwoFourTree();
 
+            //TwoFourTree twoFourTree = new TwoFourTree();
+          
             foreach (var o in currentStack.operations)
             {
                 if (o.operation == "I")
-                    tree.insert(o.number);
+                {
+                    tree.Insert(o.number);
+                    twoFourTree.Insert(o.number);
+                    
+                }
                 else if (o.operation == "D")
                     tree.delete(o.number);
                 /*
                 Console.Clear();
                 tree.root.PrintNode(1);*/
 
-            }
+
+              /*  Console.Clear();
+                twoFourTree.root.PrintNode(1); */
+                
+                
+               }
+            
 
             //tree.delete(6326);
             //tree.delete(4742);
+            twoFourTree.root.PrintNode(1);
             tree.root.PrintNode(1);
             file.Close();
             Console.ReadLine();
         }
     }
 
-    //Stack class for the tree operation that is going to be performed
+    /*
+     * This is the Stack class for the tree operation that is going to be performed
+     */
+
     class TreeStack
     {
         public List<Operation> operations;
@@ -140,28 +158,52 @@ namespace assignment2bro
 
     }
 
-    //Represents a node of 2,3 Tree
-    public class TwoThreeTreeNode
+    /*
+     GENERAL TREE NODE IMPLEMENTATIONS
+     */
+    public abstract class TreeNode
     {
         public bool isLeaf;
         public int[] elements;                 //elements[0] : leftmost element , elements[1] : middle element , elements[2] : rightmost element
-        public TwoThreeTreeNode[] children;    //children[0] : leftmost child , children[1] : middle child , children[2] : rightmost child
-        public TwoThreeTreeNode parent;        //parent node
+        public TreeNode[] children;    //children[0] : leftmost child , children[1] : middle child , children[2] : rightmost child
+        public TreeNode parent;        //parent node
         public int numberOfElements;           //this variable indicates the number of the elements that stored in the node 
         //in case this node isn't a leaf, numberOfElement + 1 gives the number of children
 
-        public TwoThreeTreeNode()
+        public TreeNode()
         {
-            this.elements = new int[2];
-            this.children = new TwoThreeTreeNode[4];
-            this.numberOfElements = 0;
-            this.isLeaf = false;
             this.parent = null;
+        }
+
+        public bool IsLeaf()
+        {
+            bool result = true;
+            for (int i = 0; i < this.children.Length; i++)
+            {
+                if (this.children[i] != null)
+                {
+                    result = false;
+                    break;
+                }
+                    
+            }
+
+            return result;
+        }
+
+        public int NumberOfElements()
+        {
+            int count = 0;
+            for (int i = 0; i < this.elements.Length; i++)
+            {
+                if (this.elements[i] != 0)
+                    count++;
+            }
+            return count;
         }
 
         public void PrintNode(int indent)
         {
-            const int width = 3;
             int i = 0;
 
             // print indent spaces
@@ -190,54 +232,292 @@ namespace assignment2bro
         }
     }
 
-    //Represents a 2,3 Tree
-    public class TwoThreeTree
+    //Represents a node of 2,3 Tree
+    public class TwoThreeTreeNode : TreeNode
     {
-        public TwoThreeTreeNode root;
-        int n;                          //number of elements that's been being processed by the tree
+        public TwoThreeTreeNode()
+        {
+            this.elements = new int[2];
+            this.children = new TwoThreeTreeNode[4];
+        }
+
+        public static implicit operator TwoFourTreeNode(TwoThreeTreeNode twoTreeNode)
+        {
+            return new TwoFourTreeNode() {elements = twoTreeNode.elements,children = twoTreeNode.children,isLeaf=twoTreeNode.isLeaf,parent=twoTreeNode.parent,numberOfElements = twoTreeNode.NumberOfElements()};
+        }
+    }
+
+    //Represents a node of 2,4 Tree
+    public class TwoFourTreeNode : TreeNode
+    {
+        public TwoFourTreeNode()
+        {
+            this.elements = new int[3];
+            this.children = new TwoFourTreeNode[5];
+        }
+
+        public static implicit operator TwoThreeTreeNode(TwoFourTreeNode twoFourNode)
+        {
+            return new TwoThreeTreeNode() { };
+        }
+    }
+    
+    /*
+     GENERAL TREE IMPLEMENTATIONS
+     */
+
+    public abstract class Tree
+    {
+        public TreeNode root;
+        public int limit;
+
+        public Tree() {
+            this.limit = 0; 
+        }
+
+        public void initRoot()
+        {
+            this.root.isLeaf = true;
+            this.root.parent = null;
+        }
+
+        public void Insert(int element)
+        {
+            TreeNode treeNode = this.FindSubtreeLeaf(this.root, element);
+            if (!this.TryInsert(treeNode, element))
+                this.Split(treeNode, element);
+        }
+
+        //Tries to insert the elements, if not returns false
+        public bool TryInsert(TreeNode treeNode, int element)
+        {
+            bool result = true;
+       
+            //If it is root just add the element to the root
+            if (treeNode.NumberOfElements() == 0 && treeNode.parent == null)
+            {
+                treeNode.elements[0] = element;
+                
+            }
+            
+            else if (treeNode.NumberOfElements() < this.limit)
+            {
+                treeNode.elements[treeNode.NumberOfElements()] = element;
+                
+                this.SortElements(treeNode.elements, treeNode.NumberOfElements());
+                
+            }
+            else
+            {
+                result = false;
+            }
+
+            return result;
+        }
+
+        public virtual void Split(TreeNode treeNode, int element)
+        {
+            Console.WriteLine("This method should be overrided");
+        }
+
+
+        public TreeNode FindSubtreeLeaf(TreeNode node, int element)
+        {
+            if (node.IsLeaf())
+                return node;
+
+            else
+            {
+                if (element < node.elements[0])
+                    return this.FindSubtreeLeaf(node.children[0], element);
+
+                else if (node.NumberOfElements() == 1 || (element > node.elements[0] && element < node.elements[1]))
+                    return this.FindSubtreeLeaf(node.children[1], element);
+
+                else if (node.NumberOfElements() == 2 || (element > node.elements[1] && element < node.elements[2]))
+                    return this.FindSubtreeLeaf(node.children[2], element);
+
+                else
+                    return this.FindSubtreeLeaf(node.children[3], element);
+            }
+        }
+
+        public void SortElements(int[] elements,int numberOfElement){
+            int temp = 0;
+
+            for (int write = 0; write < numberOfElement; write++) {
+                for (int sort = 0; sort < numberOfElement - 1; sort++) {
+                    if (elements[sort] > elements[sort + 1]) {
+                        temp = elements[sort + 1];
+                        elements[sort + 1] = elements[sort];
+                        elements[sort] = temp;
+                    }
+                }
+            }
+        }
+    }
+    
+
+    //Represents a 2,4 Tree
+    public class TwoFourTree : Tree {
+      
+        //Constructor
+        public TwoFourTree(){
+            this.root = new TwoFourTreeNode();
+            this.limit = 3;
+            this.initRoot();
+        }
+
+        public override void Split(TreeNode twoFourNode, int element)
+        {
+            TwoFourTreeNode p;
+            twoFourNode = (TwoFourTreeNode) twoFourNode;
+            
+
+            if (twoFourNode.parent == null)
+            {
+                p = new TwoFourTreeNode();
+            }
+            else
+            {
+                p = (TwoFourTreeNode) twoFourNode.parent;
+            }
+
+            TwoFourTreeNode n1 = new TwoFourTreeNode();
+            TwoFourTreeNode n2 = new TwoFourTreeNode();
+
+            int[] elements = { element, twoFourNode.elements[0], twoFourNode.elements[1], twoFourNode.elements[2] };
+            int middle;
+            this.SortElements(elements, elements.Length);
+
+            n1.elements[0] = elements[0];
+            n1.elements[1] = elements[1];
+            n2.elements[0] = elements[3];
+            middle = elements[2];
+            n1.parent = p;
+            n2.parent = p;
+
+            if (p.NumberOfElements() == 0)
+            {
+                p.children[0] = n1;
+                p.children[1] = n2;
+                this.root = p;   
+            }
+
+            else if (p.NumberOfElements() == 1)
+            {
+                if (n2.elements[0] < p.elements[0])
+                {
+                    p.children[2] = p.children[1];
+                    p.children[0] = n1;
+                    p.children[1] = n2;
+                }
+                else
+                {
+                    p.children[1] = n1;
+                    p.children[2] = n2;
+                } 
+            }
+            else if (p.NumberOfElements() == 2)
+            {
+                if (n2.elements[0] < p.elements[0] && n2.elements[0] < p.elements[1])
+                {
+                    p.children[3] = p.children[2];
+                    p.children[2] = p.children[1];
+                    p.children[0] = n1;
+                    p.children[1] = n2;
+                }
+                else if (n1.elements[1] > p.elements[0] && n1.elements[1] > p.elements[1])
+                {
+                    p.children[2] = n1;
+                    p.children[3] = n2;
+                }
+                else
+                {
+                    p.children[3] = p.children[2];
+                    p.children[1] = n1;
+                    p.children[2] = n2;
+                }
+            }
+            else if (p.NumberOfElements() == 3)
+            {
+                if (n2.elements[0] < p.elements[0])
+                {
+                    p.children[4] = p.children[3];
+                    p.children[3] = p.children[2];
+                    p.children[2] = p.children[1];
+                    p.children[1] = n2;
+                    p.children[0] = n1;
+                }
+
+                else if (n1.elements[0] > p.elements[0] && n2.elements[0] < p.elements[1])
+                {
+                    p.children[4] = p.children[3];
+                    p.children[3] = p.children[2];
+                    p.children[2] = n2;
+                    p.children[1] = n1;
+                }
+
+                else if (n1.elements[0] > p.elements[1] && n2.elements[0] < p.elements[2])
+                {
+                    p.children[4] = p.children[3];
+                    p.children[3] = n2;
+                    p.children[2] = n1;
+                }
+                else
+                {
+                    p.children[3] = n1;
+                    p.children[4] = n2;
+                }
+            }
+
+            //if it is not a leaf check
+            if (twoFourNode.IsLeaf() == false)
+            {
+                twoFourNode.children[0].parent = n1;
+                twoFourNode.children[1].parent = n1;
+                twoFourNode.children[2].parent = n1;
+
+                twoFourNode.children[3].parent = n2;
+                twoFourNode.children[4].parent = n2;
+
+                n1.children[0] = twoFourNode.children[0];
+                n1.children[1] = twoFourNode.children[1];
+                n1.children[2] = twoFourNode.children[2];
+
+                n2.children[0] = twoFourNode.children[3];
+                n2.children[1] = twoFourNode.children[4];
+            }
+
+            if (p.NumberOfElements() == 3)
+            {
+                this.Split(p, middle);             
+            }
+
+            else if (p.NumberOfElements() < this.limit)
+            {
+                p.elements[p.NumberOfElements()] = middle;
+                
+                this.SortElements(p.elements, p.NumberOfElements());
+            }
+        }
+    }
+
+    //Represents a 2,3 Tree
+    public class TwoThreeTree : Tree
+    {
+       
 
         //Constructor that initializes the root of the tree
         public TwoThreeTree()
         {
             this.root = new TwoThreeTreeNode();
-            this.n = 0;
-            this.root.isLeaf = true;
-            this.root.numberOfElements = 0;
-            this.root.parent = null;
-        }
-
-        //Insert an element to the tree
-        public void insert(int element)
-        {
-            TwoThreeTreeNode twoTreeNode = this.FindSubtreeLeaf(this.root, element);
-
-            //If it is root just add the element to the root
-            if (twoTreeNode.numberOfElements == 0 && twoTreeNode.parent == null)
-            {
-                twoTreeNode.elements[0] = element;
-                twoTreeNode.numberOfElements++;
-            }
-            else if (twoTreeNode.numberOfElements == 1)
-            {
-                if (twoTreeNode.elements[0] < element)
-                {
-                    twoTreeNode.elements[1] = element;
-                }
-                else
-                {
-                    twoTreeNode.elements[1] = twoTreeNode.elements[0];
-                    twoTreeNode.elements[0] = element;
-                }
-                twoTreeNode.numberOfElements++;
-            }
-            else if (twoTreeNode.numberOfElements == 2)
-            {
-                this.split(twoTreeNode, element);
-            }
+            this.limit = 2;
+            this.initRoot();
         }
 
         //Recursively split to balance the tree
-        public void split(TwoThreeTreeNode twoThreeNode, int element)
+        public override void Split(TreeNode twoThreeNode, int element)
         {
 
             TwoThreeTreeNode p;
@@ -245,11 +525,11 @@ namespace assignment2bro
             if (twoThreeNode.parent == null)
             {
                 p = new TwoThreeTreeNode();
-                p.numberOfElements = 0;
+             
             }
             else
             {
-                p = twoThreeNode.parent;
+                p = (TwoThreeTreeNode) twoThreeNode.parent;
             }
 
             TwoThreeTreeNode n1 = new TwoThreeTreeNode();
@@ -285,18 +565,17 @@ namespace assignment2bro
             n1.parent = p;
             n2.parent = p;
 
-
-            if (p.numberOfElements == 0)
+            if (p.NumberOfElements() == 0)
             {
                 p.children[0] = n1;
                 p.children[1] = n2;
                 this.root = p;
-                n1.numberOfElements++;
-                n2.numberOfElements++;
+                
+                
                 n1.isLeaf = true;
                 n2.isLeaf = true;
             }
-            else if (p.numberOfElements == 1)
+            else if (p.NumberOfElements() == 1)
             {
                 if (n2.elements[0] < p.elements[0])
                 {
@@ -311,8 +590,8 @@ namespace assignment2bro
                 }
                 n1.isLeaf = true;
                 n2.isLeaf = true;
-                n1.numberOfElements++;
-                n2.numberOfElements++;
+                
+                
             }
             else
             {
@@ -339,7 +618,7 @@ namespace assignment2bro
 
 
             //if it is not a leaf check
-            if (twoThreeNode.isLeaf == false)
+            if (twoThreeNode.IsLeaf() == false)
             {
                 twoThreeNode.children[0].parent = n1;
                 twoThreeNode.children[1].parent = n1;
@@ -351,20 +630,18 @@ namespace assignment2bro
                 n2.children[1] = twoThreeNode.children[3];
                 n1.isLeaf = false;
                 n2.isLeaf = false;
-
             }
 
-            if (p.numberOfElements == 2)
+            if (p.NumberOfElements() == 2)
             {
-                this.split(p, middle);
+                this.Split(p, middle);
                 if (n1.children[0] != null || n2.children[0] != null)
                 {
-                    if (n1.children[0].isLeaf || n2.children[0].isLeaf)
+                    if (n1.children[0].IsLeaf() || n2.children[0].IsLeaf())
                     {
                         n1.isLeaf = false;
                         n2.isLeaf = false;
                     }
-
                 }
                 else
                 {
@@ -372,15 +649,13 @@ namespace assignment2bro
                     n2.isLeaf = true;
                 }
 
-
-
                 n1.parent.isLeaf = false;
                 n2.parent.isLeaf = false;
-                n1.numberOfElements++;
-                n2.numberOfElements++;
+                
+                
             }
 
-            else if (p.numberOfElements == 1)
+            else if (p.NumberOfElements() == 1)
             {
                 if (p.elements[0] < middle)
                 {
@@ -392,13 +667,13 @@ namespace assignment2bro
                     p.elements[0] = middle;
                 }
 
-                p.numberOfElements++;
+                
             }
 
             else
             {
                 p.elements[0] = middle;
-                p.numberOfElements++;
+                
             }
 
 
@@ -417,7 +692,7 @@ namespace assignment2bro
             int tempElement;
 
             //return the node that contains the element
-            TwoThreeTreeNode node = this.FindNode(this.root, element);
+            TwoThreeTreeNode node = this.FindNode((TwoThreeTreeNode) this.root, element);
             
             //Check the node
             if (node != null)
@@ -431,7 +706,7 @@ namespace assignment2bro
                     inOrderSuccessor = this.InOrderSuccessor(element, node);
 
                     //normally inorder successor must be at the first index but just to be sure checking the values
-                    if (inOrderSuccessor.numberOfElements == 2)
+                    if (inOrderSuccessor.NumberOfElements() == 2)
                     {
                         inOrderInd = 0;
                     }
@@ -461,14 +736,13 @@ namespace assignment2bro
                     leafNode.elements[0] = leafNode.elements[1];
                     leafNode.elements[1] = 0;
 
-                    //decrease the number of elements
-                    leafNode.numberOfElements--;
+                
                 }
                 else if (element == leafNode.elements[1])
                 {
                     //if it is second element just delete it, don't move anything
                     leafNode.elements[1] = 0;
-                    leafNode.numberOfElements--;
+                   
                 }
                 else
                 {
@@ -477,7 +751,7 @@ namespace assignment2bro
                 }
 
                 //after deleting the element, if the node is empty, fix the tree
-                if (leafNode.numberOfElements == 0)
+                if (leafNode.NumberOfElements() == 0)
                 {
                     Fix(leafNode);
                 }
@@ -488,182 +762,146 @@ namespace assignment2bro
             }
         }
 
+        void TakeElementFromNextRightSibling(TwoThreeTreeNode p, TwoThreeTreeNode node, int n)
+        {
+            node.elements[0] = p.elements[n];
+            p.elements[n] = p.children[n + 1].elements[0];
+            p.children[n + 1].elements[0] = p.children[n + 1].elements[1];
+            p.children[n + 1].elements[1] = 0;
+           
+            
+
+            if (node.IsLeaf() == false)
+            {
+                node.children[1] = p.children[n + 1].children[0];
+                p.children[n + 1].children[0] = p.children[n + 1].children[1];
+                p.children[n + 1].children[1] = p.children[n + 1].children[2];
+                p.children[n + 1].children[2] = null;
+
+                node.children[1].parent = node;
+            }
+        }
+
+        void TakeElementFromNextLeftSibling(TwoThreeTreeNode p, TwoThreeTreeNode node, int n)
+        {
+            node.elements[0] = p.elements[n];
+            p.elements[n] = p.children[n].elements[1];
+            p.children[n].elements[1] = 0;
+           
+            
+
+            if (node.IsLeaf() == false)
+            {
+                node.children[1] = node.children[0];
+                node.children[0] = p.children[n].children[2];
+                p.children[n].children[2] = null;
+
+                node.children[0].parent = node;
+            }
+        }
+
+        void TakeElementFromTwoNextRightSibling(TwoThreeTreeNode p, TwoThreeTreeNode node)
+        {
+            node.elements[0] = p.elements[0];
+            p.elements[0] = p.children[1].elements[0];
+            p.children[1].elements[0] = p.elements[1];
+            p.elements[1] = p.children[2].elements[0];
+            p.children[2].elements[0] = p.children[2].elements[1];
+            p.children[2].elements[1] = 0;
+         
+            
+
+            if (node.IsLeaf() == false)
+            {
+                node.children[1] = p.children[1].children[0];
+                p.children[1].children[0] = p.children[1].children[1];
+                p.children[1].children[1] = p.children[2].children[0];
+                p.children[2].children[0] = p.children[2].children[1];
+                p.children[2].children[1] = p.children[2].children[2];
+                p.children[2].children[2] = null;
+
+                node.children[1].parent = node;
+                p.children[1].children[1].parent = p.children[1];
+            }
+        }
+
+        void TakeElementFromTwoNextLeftSibling(TwoThreeTreeNode p, TwoThreeTreeNode node)
+        {
+            node.elements[0] = p.elements[1];
+            p.elements[1] = p.children[1].elements[0];
+            p.children[1].elements[0] = p.elements[0];
+            p.elements[0] = p.children[0].elements[1];
+            p.children[0].elements[1] = 0;
+         
+            
+
+            if (node.IsLeaf() == false)
+            {
+                node.children[1] = node.children[0];
+                node.children[0] = p.children[1].children[1];
+                p.children[1].children[1] = p.children[1].children[0];
+                p.children[1].children[0] = p.children[0].children[2];
+                p.children[0].children[2] = null;
+
+                node.children[0].parent = node;
+                p.children[1].children[0].parent = p.children[1];
+            }
+        }
+
         void Redistrubute(TwoThreeTreeNode node, TwoThreeTreeNode p, int situation)
         {
 
             //there is two different situation if the parent has two nodes
-            if (p.numberOfElements == 1)
+            if (p.NumberOfElements() == 1)
             {
                 if (situation == 0)
                 {
-                    node.elements[0] = p.elements[0];
-                    p.elements[0] = p.children[0].elements[1];
-                    p.children[0].elements[1] = 0;
-                    node.numberOfElements++;
-                    p.children[0].numberOfElements--;
-                   
-                    if (node.isLeaf == false)
-                    {
-                        node.children[1] = node.children[0];
-                        node.children[0] = p.children[0].children[2];
-                        p.children[0].children[2] = null;
-                        node.children[0].parent = node;
-                    }
+                    this.TakeElementFromNextLeftSibling(p, node, 0);
                 }
                 else
                 {
-                    
-                    node.elements[0] = p.elements[0];
-                    p.elements[0] = p.children[1].elements[0];
-                    p.children[1].elements[0] = p.children[1].elements[1];
-                    p.children[1].elements[1] = 0;
-                    node.numberOfElements++;
-                    p.children[1].numberOfElements--;
-
-                    
-                    if (node.isLeaf == false)
-                    {
-                        node.children[1] = p.children[1].children[0];
-                        p.children[1].children[0] = p.children[1].children[1];
-                        p.children[1].children[1] = p.children[1].children[2];
-                        p.children[1].children[2] = null;
-                        node.children[1].parent = node;
-                    }
+                    this.TakeElementFromNextRightSibling(p, node, 0);
                 }
             }
 
              //there is six different situation if the parent has three nodes
-            else if (p.numberOfElements == 2)
+            else if (p.NumberOfElements() == 2)
             {
                 //Check for which children is empty
-                if (p.children[0].numberOfElements == 0)
+                if (p.children[0].NumberOfElements() == 0)
                 {
                     //situation can be 1 or 2
                     if (situation == 1)
                     {
-                        node.elements[0] = p.elements[0];
-                        p.elements[0] = p.children[1].elements[0];
-                        p.children[1].elements[0] = p.children[1].elements[1];
-                        p.children[1].elements[1] = 0;
-                        p.children[1].numberOfElements--;
-                        node.numberOfElements++;
-
-                        if (node.isLeaf == false)
-                        {
-                            node.children[1] = p.children[1].children[0];
-                            p.children[1].children[0] = p.children[1].children[1];
-                            p.children[1].children[1] = p.children[1].children[2];
-                            p.children[1].children[2] = null;
-
-                            node.children[1].parent = node;
-                        }
+                        this.TakeElementFromNextRightSibling(p, node,0);
                     }
                     else
                     {
-                        node.elements[0] = p.elements[0];
-                        p.elements[0] = p.children[1].elements[0];
-                        p.children[1].elements[0] = p.elements[1];
-                        p.elements[1] = p.children[2].elements[0];
-                        p.children[2].elements[0] = p.children[2].elements[1];
-                        p.children[2].elements[1] = 0;
-                        p.children[2].numberOfElements--;
-                        node.numberOfElements++;
-
-                        if (node.isLeaf == false)
-                        {
-                            node.children[1] = p.children[1].children[0];
-                            p.children[1].children[0] = p.children[1].children[1];
-                            p.children[1].children[1] = p.children[2].children[0];
-                            p.children[2].children[0] = p.children[2].children[1];
-                            p.children[2].children[1] = p.children[2].children[2];
-                            p.children[2].children[2] = null;
-
-                            node.children[1].parent = node;
-                            p.children[1].children[1].parent = p.children[1];
-                        }
+                        this.TakeElementFromTwoNextRightSibling(p, node);
                     }
                 }
-                else if (p.children[1].numberOfElements == 0)
+                else if (p.children[1].NumberOfElements() == 0)
                 {
                     //situation can be 0 or 2
                     if (situation == 0)
                     {
-                        node.elements[0] = p.elements[0];
-                        p.elements[0] = p.children[0].elements[1];
-                        p.children[0].elements[1] = 0;
-                        p.children[0].numberOfElements--;
-                        node.numberOfElements++;
-
-                        if (node.isLeaf == false)
-                        {
-                            node.children[1] = node.children[0];
-                            node.children[0] = p.children[0].children[2];
-                            p.children[0].children[2] = null;
-
-                            node.children[0].parent = node;
-                        }
+                        this.TakeElementFromNextLeftSibling(p, node, 0);
                     }
                     else
                     {
-                        node.elements[0] = p.elements[1];
-                        p.elements[1] = p.children[2].elements[0];
-                        p.children[2].elements[0] = p.children[2].elements[1];
-                        p.children[2].elements[1] = 0;
-                        p.children[2].numberOfElements--;
-                        node.numberOfElements++;
-
-                        if (node.isLeaf == false)
-                        {
-                            node.children[1] = p.children[2].children[0];
-                            p.children[2].children[0] = p.children[2].children[1];
-                            p.children[2].children[1] = p.children[2].children[2];
-                            p.children[2].children[2] = null;
-
-                            node.children[1].parent = node;
-                        }
+                        this.TakeElementFromNextRightSibling(p, node, 1);
                     }
                 }
-                else if (p.children[2].numberOfElements == 0)
+                else if (p.children[2].NumberOfElements() == 0)
                 {
                     //situation can be 0 or 1
                     if (situation == 0)
                     {
-                        node.elements[0] = p.elements[1];
-                        p.elements[1] = p.children[1].elements[0];
-                        p.children[1].elements[0] = p.elements[0];
-                        p.elements[0] = p.children[0].elements[1];
-                        p.children[0].elements[1] = 0;
-                        p.children[0].numberOfElements--;
-                        node.numberOfElements++;
-
-                        if (node.isLeaf == false)
-                        {
-                            node.children[1] = node.children[0];
-                            node.children[0] = p.children[1].children[1];
-                            p.children[1].children[1] = p.children[1].children[0];
-                            p.children[1].children[0] = p.children[0].children[2];
-                            p.children[0].children[2] = null;
-
-                            node.children[0].parent = node;
-                            p.children[1].children[0].parent = p.children[1];
-                        }
+                        this.TakeElementFromTwoNextLeftSibling(p, node);
                     }
                     else
                     {
-                        node.elements[0] = p.elements[1];
-                        p.elements[1] = p.children[1].elements[1];
-                        p.children[1].elements[1] = 0;
-                        p.children[1].numberOfElements--;
-                        node.numberOfElements++;
-
-                        if (node.isLeaf == false)
-                        {
-                            node.children[1] = node.children[0];
-                            node.children[0] = p.children[1].children[2];
-                            p.children[1].children[2] = null;
-
-                            node.children[0].parent = node;
-                        }
+                        this.TakeElementFromNextLeftSibling(p, node, 1);
                     }
                 }
             }
@@ -671,7 +909,7 @@ namespace assignment2bro
 
         void Merge(TwoThreeTreeNode node)
         {
-            if (node.parent.numberOfElements == 1)
+            if (node.parent.NumberOfElements() == 1)
             {
                         //empty node at the left
                         if (node.parent.children[0] == node)
@@ -680,15 +918,14 @@ namespace assignment2bro
                             node.parent.children[1].elements[0] = node.parent.elements[0];
                             node.parent.elements[0] = 0;
 
-                            node.parent.children[1].numberOfElements++;
-                            node.parent.numberOfElements--;
+                            
 
                             //remove the node
                             node.parent.children[0] = node.parent.children[1];
                             node.parent.children[1] = null;
 
                             //if node is internal
-                            if (node.isLeaf == false)
+                            if (node.IsLeaf() == false)
                             {
                                 node.parent.children[0].children[2] = node.parent.children[0].children[1];
                                 node.parent.children[0].children[1] = node.parent.children[0].children[0];
@@ -702,19 +939,18 @@ namespace assignment2bro
                         {
                             node.parent.children[0].elements[1] = node.parent.elements[0];
                             node.parent.elements[0] = 0;
-                            node.parent.children[0].numberOfElements++;
-                            node.parent.numberOfElements--;
+                           
                             node.parent.children[1] = null;
 
                             //if node is internal
-                            if (node.isLeaf == false)
+                            if (node.IsLeaf() == false)
                             {
                                 node.parent.children[0].children[2] = node.children[0];
                                 node.parent.children[0].children[2].parent = node.parent.children[0];
                             }
                         }
             }
-                    else if (node.parent.numberOfElements == 2)
+                    else if (node.parent.NumberOfElements() == 2)
                     {
                         //empty node at the left
                         if (node.parent.children[0] == node)
@@ -723,15 +959,14 @@ namespace assignment2bro
                             node.parent.children[1].elements[0] = node.parent.elements[0];
                             node.parent.elements[0] = node.parent.elements[1];
                             node.parent.elements[1] = 0;
-                            node.parent.numberOfElements--;
-                            node.parent.children[1].numberOfElements++;
+                           
 
                             node.parent.children[0] = node.parent.children[1];
                             node.parent.children[1] = node.parent.children[2];
                             node.parent.children[2] = null;
 
                             //if node is internal
-                            if (node.isLeaf == false)
+                            if (node.IsLeaf() == false)
                             {
                                 node.parent.children[0].children[2] = node.parent.children[0].children[1];
                                 node.parent.children[0].children[1] = node.parent.children[0].children[0];
@@ -748,14 +983,13 @@ namespace assignment2bro
                             node.parent.children[0].elements[1] = node.parent.elements[0];
                             node.parent.elements[0] = node.parent.elements[1];
                             node.parent.elements[1] = 0;
-                            node.parent.children[0].numberOfElements++;
-                            node.parent.numberOfElements--;
+                           
 
                             node.parent.children[1] = node.parent.children[2];
                             node.parent.children[2] = null;
 
                             //if node is internal
-                            if (node.isLeaf == false)
+                            if (node.IsLeaf() == false)
                             {
                                 node.parent.children[0].children[2] = node.children[0];
                                 node.parent.children[0].children[2].parent = node.parent.children[0];
@@ -767,12 +1001,11 @@ namespace assignment2bro
                         {
                             node.parent.children[1].elements[1] = node.parent.elements[1];
                             node.parent.elements[1] = 0;
-                            node.parent.numberOfElements--;
-                            node.parent.children[1].numberOfElements++;
+                            
                             node.parent.children[2] = null;
 
                             //if node is internal
-                            if (node.isLeaf == false)
+                            if (node.IsLeaf() == false)
                             {
                                 node.parent.children[1].children[2] = node.children[0];
                                 node.parent.children[1].children[2].parent = node.parent.children[1];
@@ -781,9 +1014,8 @@ namespace assignment2bro
                     }
         }
 
-        //completes the deletion when node n is empty by either
-        // removing the root, redistributing values, or merging nodes.
-        // if n is internal, it has only one child
+        //completes the deletion when node n is empty by either, removing the root, redistributing values, or merging nodes.
+        //Note : if n is internal, it has only one child
         void Fix(TwoThreeTreeNode node)
         {
             TwoThreeTreeNode p;
@@ -799,7 +1031,7 @@ namespace assignment2bro
 
             else
             {
-                p = node.parent;
+                p = (TwoThreeTreeNode) node.parent;
 
                 //situation represents both the possibility of merge and the sibling with two elements
                 //if it returns -1, means there is no siblings with two elements
@@ -820,9 +1052,9 @@ namespace assignment2bro
                     this.Merge(node);
                 }
 
-                if (node.parent.numberOfElements == 0)
+                if (node.parent.NumberOfElements() == 0)
                 {
-                     this.Fix(node.parent);
+                     this.Fix( (TwoThreeTreeNode) node.parent);
                 }
             }
         }
@@ -833,13 +1065,13 @@ namespace assignment2bro
             int result = -1;
 
             //check the number of the children equality to 2
-            if (node.numberOfElements == 1)
+            if (node.NumberOfElements() == 1)
             {
                 for (int i = 0; i < node.children.Length; i++)
                 {
                     if (node.children[i] != null)
                     {
-                        if (node.children[i].numberOfElements == 2)
+                        if (node.children[i].NumberOfElements() == 2)
                         {
                             result = i;
                             break;
@@ -851,13 +1083,13 @@ namespace assignment2bro
             //number of the children equality to 3
             else
             {
-                if (node.children[0].numberOfElements == 0)
+                if (node.children[0].NumberOfElements() == 0)
                 {
                     for (int i = 0; i < node.children.Length; i++)
                     {
                         if (node.children[i] != null)
                         {
-                            if (node.children[i].numberOfElements == 2)
+                            if (node.children[i].NumberOfElements() == 2)
                             {
                                 result = i;
                                 break;
@@ -873,7 +1105,7 @@ namespace assignment2bro
                     {
                         if (node.children[i] != null)
                         {
-                            if (node.children[i].numberOfElements == 2)
+                            if (node.children[i].NumberOfElements() == 2)
                             {
                                 result = i;
                                 break;
@@ -896,45 +1128,25 @@ namespace assignment2bro
             {
                 if (node.elements[0] == element)
                 {
-                    next = node.children[1];
+                    next = (TwoThreeTreeNode) node.children[1];
                 }
                 else
                 {
-                    next = node.children[2];
+                    next = (TwoThreeTreeNode) node.children[2];
                 }
             }
             else
             {
-                next = node.children[1];
+                next = (TwoThreeTreeNode) node.children[1];
             }
             
             // Continue down left branches until we encounter a leaf.
-            while (next.isLeaf == false)
+            while (next.IsLeaf() == false)
             {
-                next = next.children[0];
+                next = (TwoThreeTreeNode) next.children[0];
             }
 
             return next;
-        }
-
-        //Search for the subtree that contains the element, If it finds returns the node that contains e, 
-        //if not it returns the node that element can be placed in
-        public TwoThreeTreeNode FindSubtreeLeaf(TwoThreeTreeNode twoThreeNode, int element)
-        {
-            if (twoThreeNode.isLeaf)
-                return twoThreeNode;
-
-            else
-            {
-                if (element <= twoThreeNode.elements[0])
-                    return FindSubtreeLeaf(twoThreeNode.children[0], element);
-
-                else if (twoThreeNode.numberOfElements < 2 || element <= twoThreeNode.elements[1])
-                    return FindSubtreeLeaf(twoThreeNode.children[1], element);
-
-                else
-                    return FindSubtreeLeaf(twoThreeNode.children[2], element);
-            }
         }
 
         public TwoThreeTreeNode FindNode(TwoThreeTreeNode twoThreeNode, int element)
@@ -942,7 +1154,7 @@ namespace assignment2bro
             bool isFound = false;
             if (twoThreeNode != null)
             {
-                for (int i = 0; i < twoThreeNode.numberOfElements; i++)
+                for (int i = 0; i < twoThreeNode.NumberOfElements(); i++)
                 {
                     if (twoThreeNode.elements[i] == element)
                         isFound = true;
@@ -951,33 +1163,32 @@ namespace assignment2bro
                 if (isFound == true)
                     return twoThreeNode;
 
-                else if (twoThreeNode.numberOfElements == 1)
+                else if (twoThreeNode.NumberOfElements() == 1)
                 {
                     if (element < twoThreeNode.elements[0])
-                        return FindNode(twoThreeNode.children[0], element);
+                        return FindNode((TwoThreeTreeNode) twoThreeNode.children[0], element);
                     else
-                        return FindNode(twoThreeNode.children[1], element);
+                        return FindNode((TwoThreeTreeNode) twoThreeNode.children[1], element);
                 }
-                else if (twoThreeNode.numberOfElements == 2)
+                else if (twoThreeNode.NumberOfElements() == 2)
                 {
                     if (element < twoThreeNode.elements[0])
                     {
-                        return FindNode(twoThreeNode.children[0], element);
+                        return FindNode((TwoThreeTreeNode) twoThreeNode.children[0], element);
                     }
                     else if (element > twoThreeNode.elements[1])
                     {
-                        return FindNode(twoThreeNode.children[2], element);
+                        return FindNode((TwoThreeTreeNode) twoThreeNode.children[2], element);
                     }
                     else
                     {
-                        return FindNode(twoThreeNode.children[1], element);
+                        return FindNode((TwoThreeTreeNode) twoThreeNode.children[1], element);
                     }
                 }
             }
             
             return null;
         }
-
 
     }
 
